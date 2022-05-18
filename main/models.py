@@ -51,6 +51,9 @@ class Transaction(models.Model):
         self.clean_fields()
         super().save(*args, **kwargs)
 
+    def delete(self, using=None, keep_parents=False):
+        raise ValidationError('You cannot delete a transaction')
+
     def __str__(self):
         return f'{self.user} - {self.amount}'
 
@@ -77,3 +80,6 @@ def validate_transfer(transfer: Transaction):
 
     if transfer.user.min_allowed_transfer() > transfer.amount:
         raise ValidationError('Transfer amount is less than the minimum allowed')
+
+    if transfer.receiver == transfer.user:
+        raise ValidationError('Transfer receiver is the same as the sender')
