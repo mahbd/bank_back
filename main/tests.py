@@ -14,6 +14,12 @@ Deposit:
     - Create deposit with amount greater than MAX_AMOUNT
     - Create deposit with amount less than MIN_AMOUNT
     - Delete deposit
+    - Accept pending deposit
+    - Accept canceled deposit
+    - Accept accepted deposit
+    - Reject pending deposit
+    - Reject accepted deposit
+    - Reject canceled deposit
 Withdrawal:
     - Create withdrawal
     - Create withdrawal with negative amount
@@ -28,16 +34,6 @@ Transfer:
     - Create transfer to self
     - Delete transfer
 TODO:
-Deposit:
-    - Accept pending deposit
-    - Accept canceled deposit
-    - Accept accepted deposit
-    - Reject pending deposit
-    - Reject accepted deposit
-    - Reject canceled deposit
-    - Cancel pending deposit
-    - Cancel accepted deposit
-    - Cancel canceled deposit
 Withdrawal:
     - Accept pending withdrawal
     - Accept canceled withdrawal
@@ -45,9 +41,6 @@ Withdrawal:
     - Reject pending withdrawal
     - Reject accepted withdrawal
     - Reject canceled withdrawal
-    - Cancel pending withdrawal
-    - Cancel accepted withdrawal
-    - Cancel canceled withdrawal
 Transfer:
     - Accept pending transfer
     - Accept canceled transfer
@@ -55,10 +48,7 @@ Transfer:
     - Reject pending transfer
     - Reject accepted transfer
     - Reject canceled transfer
-    - Cancel pending transfer
-    - Cancel accepted transfer
-    - Cancel accepted transfer if recipient has insufficient funds
-    - Cancel canceled transfer
+    - Reject accepted transfer if recipient has insufficient funds
 """
 
 
@@ -107,12 +97,62 @@ class DepositTests(TransactionTest):
             transaction.delete()
 
     def test_accept_pending_deposit(self):
-        self.transaction.accept()
+        previous_balance = self.user.balance
+        self.transaction.accept_transaction()
+        self.assertEqual(self.transaction.status, TRANSACTION_STATUS_COMPLETED)
+        self.assertEqual(self.user.balance, previous_balance + self.transaction.amount)
+
+    def test_accept_canceled_deposit(self):
+        previous_balance = self.user.balance
+        self.transaction.status = TRANSACTION_STATUS_FAILED
+        self.transaction.save()
+        with self.assertRaises(ValidationError, msg='Transaction should not be accepted'):
+            self.transaction.accept_transaction()
+        self.assertEqual(self.transaction.user.balance, previous_balance)
+
+    def test_accept_accepted_deposit(self):
+        previous_balance = self.user.balance
+        self.transaction.status = TRANSACTION_STATUS_COMPLETED
+        self.transaction.save()
+        with self.assertRaises(ValidationError, msg='Transaction should not be accepted'):
+            self.transaction.accept_transaction()
+        self.assertEqual(self.transaction.user.balance, previous_balance)
+
+    def test_reject_pending_deposit(self):
+        previous_balance = self.user.balance
+        self.transaction.reject_transaction()
+        self.assertEqual(self.transaction.status, TRANSACTION_STATUS_FAILED)
+        self.assertEqual(self.user.balance, previous_balance)
+
+    def test_reject_accepted_deposit(self):
+        previous_balance = self.user.balance
+        self.transaction.status = TRANSACTION_STATUS_COMPLETED
+        self.transaction.save()
+        with self.assertRaises(ValidationError, msg='Transaction should not be rejected'):
+            self.transaction.reject_transaction()
+        self.assertEqual(self.transaction.user.balance, previous_balance)
+
+    def test_reject_canceled_deposit(self):
+        previous_balance = self.user.balance
+        self.transaction.status = TRANSACTION_STATUS_FAILED
+        self.transaction.save()
+        with self.assertRaises(ValidationError, msg='Transaction should not be rejected'):
+            self.transaction.reject_transaction()
+        self.assertEqual(self.transaction.user.balance, previous_balance)
+
+    def test_reject_rejected_deposit(self):
+        previous_balance = self.user.balance
+        self.transaction.status = TRANSACTION_STATUS_FAILED
+        self.transaction.save()
+        with self.assertRaises(ValidationError, msg='Transaction should not be rejected'):
+            self.transaction.reject_transaction()
+        self.assertEqual(self.transaction.user.balance, previous_balance)
 
 
 class WithdrawTests(TransactionTest):
     def setUp(self) -> None:
         super().setUp()
+        self.transaction = Transaction(type=TRANSACTION_TYPE_WITHDRAW, amount=50, method='test', user=self.user)
 
     def test_create_withdrawal(self):
         transaction = Transaction(type=TRANSACTION_TYPE_WITHDRAW, amount=50, method='test', user=self.user)

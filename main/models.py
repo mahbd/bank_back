@@ -54,6 +54,26 @@ class Transaction(models.Model):
     def delete(self, using=None, keep_parents=False):
         raise ValidationError('You cannot delete a transaction')
 
+    def accept_transaction(self):
+        if self.type == TRANSACTION_TYPE_DEPOSIT:
+            accept_deposit(self)
+        elif self.type == TRANSACTION_TYPE_WITHDRAW:
+            accept_withdrawal(self)
+        elif self.type == TRANSACTION_TYPE_TRANSFER:
+            accept_transfer(self)
+        else:
+            raise ValidationError('Invalid transaction type')
+
+    def reject_transaction(self):
+        if self.type == TRANSACTION_TYPE_DEPOSIT:
+            reject_deposit(self)
+        elif self.type == TRANSACTION_TYPE_WITHDRAW:
+            reject_withdrawal(self)
+        elif self.type == TRANSACTION_TYPE_TRANSFER:
+            reject_transfer(self)
+        else:
+            raise ValidationError('Invalid transaction type')
+
     def __str__(self):
         return f'{self.user} - {self.amount}'
 
@@ -83,3 +103,84 @@ def validate_transfer(transfer: Transaction):
 
     if transfer.receiver == transfer.user:
         raise ValidationError('Transfer receiver is the same as the sender')
+
+
+def accept_deposit(deposit: Transaction, update_balance=True):
+    if deposit.status == TRANSACTION_STATUS_PENDING:
+        if update_balance:
+            deposit.user.balance += deposit.amount
+            deposit.user.save()
+        deposit.status = TRANSACTION_STATUS_COMPLETED
+        deposit.save()
+    else:
+        if deposit.status == TRANSACTION_STATUS_COMPLETED:
+            raise ValidationError('Transaction is already completed')
+        else:
+            raise ValidationError('Transaction is not pending')
+
+
+def accept_withdrawal(withdrawal: Transaction):
+    if withdrawal.status == TRANSACTION_STATUS_PENDING:
+        withdrawal.status = TRANSACTION_STATUS_COMPLETED
+        withdrawal.save()
+    else:
+        if withdrawal.status == TRANSACTION_STATUS_COMPLETED:
+            raise ValidationError('Transaction is already completed')
+        else:
+            raise ValidationError('Transaction is not pending')
+
+
+def accept_transfer(transfer: Transaction, update_receiver_balance=True):
+    if transfer.status == TRANSACTION_STATUS_PENDING:
+        if update_receiver_balance:
+            transfer.receiver.balance += transfer.amount
+            transfer.receiver.save()
+        transfer.status = TRANSACTION_STATUS_COMPLETED
+        transfer.save()
+    else:
+        if transfer.status == TRANSACTION_STATUS_COMPLETED:
+            raise ValidationError('Transaction is already completed')
+        else:
+            raise ValidationError('Transaction is not pending')
+
+
+def reject_deposit(deposit: Transaction):
+    if deposit.status == TRANSACTION_STATUS_PENDING:
+        deposit.status = TRANSACTION_STATUS_FAILED
+        deposit.save()
+    else:
+        if deposit.status == TRANSACTION_STATUS_FAILED:
+            raise ValidationError('Transaction is already failed')
+        else:
+            raise ValidationError('Transaction is not pending')
+
+
+def reject_withdrawal(withdrawal: Transaction, update_balance=True):
+    if withdrawal.status == TRANSACTION_STATUS_PENDING:
+        if update_balance:
+            withdrawal.user.balance += withdrawal.amount
+            withdrawal.user.save()
+        withdrawal.status = TRANSACTION_STATUS_FAILED
+        withdrawal.save()
+    else:
+        if withdrawal.status == TRANSACTION_STATUS_FAILED:
+            raise ValidationError('Transaction is already failed')
+        else:
+            raise ValidationError('Transaction is not pending')
+
+
+def reject_transfer(transfer: Transaction, update_sender_balance=True, update_receiver_balance=False):
+    if transfer.status == TRANSACTION_STATUS_PENDING:
+        if update_sender_balance:
+            transfer.user.balance += transfer.amount
+            transfer.user.save()
+        if update_receiver_balance:
+            transfer.receiver.balance -= transfer.amount
+            transfer.receiver.save()
+        transfer.status = TRANSACTION_STATUS_FAILED
+        transfer.save()
+    else:
+        if transfer.status == TRANSACTION_STATUS_FAILED:
+            raise ValidationError('Transaction is already failed')
+        else:
+            raise ValidationError('Transaction is not pending')
