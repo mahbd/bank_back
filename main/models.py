@@ -10,7 +10,7 @@ User: UserModel = get_user_model()
 
 
 class ExternalBank(models.Model):
-    user = models.ForeignKey
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     account_number = models.CharField(max_length=255)
     information = models.TextField()
