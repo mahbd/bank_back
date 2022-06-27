@@ -89,7 +89,7 @@ class ExternalBankTest(TestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_create_external_bank_with_token(self):
-        response = c.post(self.api_url, data={"name": "test2", 'account_number': 'te', 'information': 'test2'},
+        response = c.post(self.api_url, json={"name": "test2", 'account_number': 'te', 'information': 'test2'},
                           headers=c_header(self.token))
         self.assertEqual(response.status_code, 201, response.json())
         data = response.json()
@@ -104,9 +104,9 @@ class ExternalBankTest(TestCase):
 
     def test_update_external_bank_with_token(self):
         response = c.patch(f'{self.api_url}{self.external_bank.id}/',
-                           {'name': 'test2', 'account_number': 'test2', 'information': 'test2'},
+                           json={'name': 'test2', 'account_number': 'test2', 'information': 'test2'},
                            headers=c_header(self.token))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, response.json())
         data = response.json()
         self.assertEqual(data['name'], 'test2')
         self.assertEqual(data['user'], self.user.id)
@@ -118,9 +118,15 @@ class ExternalBankTest(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_update_external_bank_of_another_user_with_admin_token(self):
-        response = c.patch(f'{self.api_url}{self.external_bank.id}/', {'name': 'test2'},
+        response = c.patch(f'{self.api_url}{self.external_bank.id}/', json={'name': 'test2'},
                            headers=c_header(self.admin_token))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, response.json())
         data = response.json()
         self.assertEqual(data['name'], 'test2')
         self.assertEqual(data['user'], self.user.id)
+
+    def test_update_external_bank_with_staff_token(self):
+        staff, staff_token = create_user("staff", "staff", is_staff=True, is_superuser=False)
+        response = c.patch(f'{self.api_url}{self.external_bank.id}/', json={'name': 'test2'},
+                           headers=c_header(staff_token))
+        self.assertEqual(response.status_code, 403, response.json())

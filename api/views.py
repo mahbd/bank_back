@@ -8,9 +8,22 @@ from main.models import ExternalBank, KYC, Transaction
 from .serializers import ExternalBankSerializer, KYCSerializer, TransactionSerializer
 
 
+class IsOwnerOrHasPermission(permissions.DjangoModelPermissions):
+    def has_permission(self, request, view):
+        # If user not staff or superuser, automatically filter out all objects that are not owned by the user
+        if (request.user.is_authenticated and not request.user.is_staff) or request.user.is_superuser:
+            return True
+        return super().has_permission(request, view)
+
+    def has_object_permission(self, request, view, obj):
+        if obj.user == request.user or request.user.is_superuser:
+            return True
+        return super().has_object_permission(request, view, obj)
+
+
 class ExternalBankViewSet(viewsets.ModelViewSet):
     serializer_class = ExternalBankSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrHasPermission]
     model_class = ExternalBank
 
     def get_queryset(self) -> QuerySet:
