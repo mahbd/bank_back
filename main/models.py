@@ -20,8 +20,12 @@ class ExternalBank(models.Model):
 
 
 class KYC(models.Model):
+    def upload_path(self, filename):
+        return f'kyc/{self.user.id}/{filename}'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
-    doc = models.FileField(upload_to='documents/')
+    doc = models.FileField(upload_to=upload_path)
     date = models.DateTimeField(auto_now_add=True)
 
 
