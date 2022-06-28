@@ -36,7 +36,7 @@ def create_user(username: str = None, password: str = None, **kwargs) -> tuple[U
     if not password:
         password = ''.join(choices(ascii_letters, k=randint(5, 10)))
     user = User.objects.create_user(username=username, password=password, **kwargs)
-    response = c.post(S_URL + reverse('token_obtain_pair'), {'username': username, 'password': password})
+    response = c.post(S_URL + reverse('api:token_obtain_pair'), {'username': username, 'password': password})
     token = response.json()['access']
     return user, token
 
@@ -55,7 +55,7 @@ def c_header(token: str = None, is_json: bool = True) -> dict:
 
 class ExternalBankTest(TestCase):
     def setUp(self) -> None:
-        self.api_url = S_URL + reverse('external_bank-list')
+        self.api_url = S_URL + reverse('api:external_bank-list')
         # create a user
         self.user, self.token = create_user()
         self.user2, self.token2 = create_user("test2", "test2")
